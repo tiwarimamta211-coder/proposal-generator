@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Proposal Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #0f0e0c;
+    --cream: #f7f4ee;
+    --warm: #e8e1d4;
+    --accent: #c4783c;
+    --accent2: #2d5a4e;
+    --muted: #8a8070;
+    --danger: #b94040;
+    --success: #2d6a4f;
+    --border: #d5cdc0;
+    --card: #ffffff;
+    --shadow: 0 2px 20px rgba(15,14,12,0.08);
+    --shadow-lg: 0 8px 40px rgba(15,14,12,0.14);
+    --radius: 4px;
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--cream);
+    color: var(--ink);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--ink);
+    color: var(--cream);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.3);
+  }
+  header .logo {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  header .logo span {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  header nav { display: flex; gap: 8px; align-items: center; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.18s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #b06530; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(196,120,60,0.4); }
+  .btn-secondary { background: transparent; color: var(--cream); border: 1px solid rgba(247,244,238,0.3); }
+  .btn-secondary:hover { background: rgba(247,244,238,0.1); }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--ink); color: var(--ink); }
+  .btn-danger { background: #fdf2f2; color: var(--danger); border: 1px solid #f0cece; }
+  .btn-danger:hover { background: var(--danger); color: #fff; }
+  .btn-success { background: var(--accent2); color: #fff; }
+  .btn-success:hover { background: #1f4136; }
+  .btn-sm { padding: 6px 12px; font-size: 11px; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+  /* ── MAIN LAYOUT ── */
+  .app-wrapper { display: flex; min-height: calc(100vh - 61px); }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 220px;
+    background: var(--ink);
+    flex-shrink: 0;
+    padding: 24px 0;
+    position: sticky;
+    top: 61px;
+    height: calc(100vh - 61px);
+    overflow-y: auto;
+  }
+  .sidebar-section { padding: 8px 0; margin-bottom: 8px; }
+  .sidebar-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0 20px;
+    margin-bottom: 6px;
+  }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 20px;
+    color: rgba(247,244,238,0.65);
+    cursor: pointer;
+    font-size: 13.5px;
+    font-weight: 400;
+    transition: all 0.15s;
+    border-left: 3px solid transparent;
+    text-decoration: none;
+  }
+  .sidebar-item:hover { color: var(--cream); background: rgba(255,255,255,0.05); }
+  .sidebar-item.active { color: var(--cream); border-left-color: var(--accent); background: rgba(196,120,60,0.12); }
+  .sidebar-item .icon { font-size: 15px; width: 18px; text-align: center; }
+
+  /* ── CONTENT ── */
+  .content { flex: 1; padding: 32px; max-width: 960px; }
+
+  /* ── SECTION PANELS ── */
+  .panel { display: none; animation: fadeIn 0.25s ease; }
+  .panel.active { display: block; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
+  .panel-header { margin-bottom: 28px; }
+  .panel-header h2 {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+  }
+  .panel-header p { color: var(--muted); margin-top: 6px; font-size: 14px; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+  }
+  .card-title {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .pill {
+    font-family: var(--font-body);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: var(--warm);
+    color: var(--muted);
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+
+  /* ── FORM ELEMENTS ── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label {
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  input[type="text"], input[type="number"], input[type="email"], input[type="date"], select, textarea {
+    font-family: var(--font-body);
+    font-size: 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 9px 12px;
+    background: var(--cream);
+    color: var(--ink);
+    width: 100%;
+    transition: border-color 0.15s;
+    outline: none;
+    resize: vertical;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); background: #fff; }
+  input::placeholder, textarea::placeholder { color: #bbb; }
+  select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a8070'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
+
+  /* ── TABLE ── */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .data-table th {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 2px solid var(--border);
+  }
+  .data-table td { padding: 9px 10px; border-bottom: 1px solid var(--warm); vertical-align: middle; }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: var(--cream); }
+  .data-table .amount { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
+  .data-table .actions { text-align: right; white-space: nowrap; }
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+  .tag-asset { background: #e6f4ed; color: #1a5c3a; }
+  .tag-liability { background: #fdeaea; color: #8b2020; }
+  .tag-fee { background: #eef3fd; color: #2d4da0; }
+
+  /* ── SUMMARY BOXES ── */
+  .summary-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 20px; }
+  .summary-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 18px 20px;
+    text-align: center;
+  }
+  .summary-box .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+  .summary-box .value { font-family: var(--font-display); font-size: 1.7rem; font-weight: 700; }
+  .summary-box.positive .value { color: var(--success); }
+  .summary-box.negative .value { color: var(--danger); }
+  .summary-box.neutral .value { color: var(--accent); }
+
+  /* ── ADD ROW FORM ── */
+  .add-row {
+    background: var(--warm);
+    border: 1.5px dashed var(--border);
+    border-radius: 6px;
+    padding: 18px;
+    margin-top: 16px;
+  }
+  .add-row h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 12px; font-weight: 600; }
+
+  /* ── PREVIEW ── */
+  #preview-content {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 48px 56px;
+    box-shadow: var(--shadow-lg);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.7;
+    color: #1a1816;
+  }
+  .preview-logo-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; padding-bottom: 24px; border-bottom: 2px solid #0f0e0c; }
+  .preview-company-name { font-family: var(--font-display); font-size: 2rem; font-weight: 900; color: #0f0e0c; }
+  .preview-tagline { font-size: 12px; color: #8a8070; margin-top: 4px; }
+  .preview-meta { text-align: right; font-size: 12px; color: #8a8070; line-height: 1.9; }
+  .preview-meta strong { color: #0f0e0c; display: block; font-size: 18px; font-family: var(--font-display); }
+  .preview-to { margin-bottom: 32px; }
+  .preview-to h3 { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: #8a8070; font-weight: 600; margin-bottom: 6px; }
+  .preview-to .client-name { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; }
+  .preview-intro { margin-bottom: 32px; padding: 20px; background: #f7f4ee; border-left: 3px solid #c4783c; font-size: 14px; }
+  .preview-section-title { font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; margin: 28px 0 12px; padding-bottom: 6px; border-bottom: 1px solid #e0d8cc; }
+  .preview-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px; }
+  .preview-table th { background: #0f0e0c; color: #f7f4ee; padding: 9px 12px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; }
+  .preview-table td { padding: 8px 12px; border-bottom: 1px solid #e8e1d4; }
+  .preview-table tr:last-child td { border-bottom: none; }
+  .preview-table .r { text-align: right; font-variant-numeric: tabular-nums; }
+  .preview-table tfoot td { font-weight: 700; background: #f7f4ee; border-top: 2px solid #0f0e0c; }
+  .preview-net { display: flex; justify-content: flex-end; margin: 16px 0 28px; }
+  .preview-net-box { background: #0f0e0c; color: #f7f4ee; padding: 14px 28px; border-radius: 4px; text-align: right; }
+  .preview-net-box .net-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.09em; color: #8a8070; }
+  .preview-net-box .net-val { font-family: 'Playfair Display', Georgia, serif; font-size: 1.8rem; font-weight: 700; }
+  .preview-fee-box { background: #2d5a4e; color: #fff; padding: 16px 20px; border-radius: 4px; margin-bottom: 28px; display: flex; justify-content: space-between; align-items: center; }
+  .preview-fee-box .fee-label { font-size: 12px; opacity: 0.75; }
+  .preview-fee-box .fee-val { font-family: 'Playfair Display', Georgia, serif; font-size: 1.5rem; font-weight: 700; }
+  .preview-remarks { background: #f7f4ee; padding: 16px 20px; border-radius: 4px; font-size: 13px; color: #4a4540; margin-bottom: 28px; }
+  .preview-signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 48px; padding-top: 24px; border-top: 1px solid #e0d8cc; }
+  .preview-sig-line { border-bottom: 1.5px solid #0f0e0c; margin-bottom: 8px; height: 48px; }
+  .preview-sig-label { font-size: 11px; color: #8a8070; }
+
+  /* ── PROGRESS STEPS ── */
+  .steps-bar { display: flex; gap: 0; margin-bottom: 28px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+  .step-item {
+    flex: 1; padding: 10px 14px; text-align: center;
+    font-size: 12px; font-weight: 500; cursor: pointer;
+    background: var(--card); color: var(--muted);
+    border-right: 1px solid var(--border);
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .step-item:last-child { border-right: none; }
+  .step-item.done { background: #eef7f2; color: var(--success); }
+  .step-item.active { background: var(--accent); color: #fff; font-weight: 600; }
+  .step-num { width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,0.25); font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+  .step-item.done .step-num { background: var(--success); color: #fff; }
+  .step-item.active .step-num { background: rgba(255,255,255,0.3); }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 28px; right: 28px;
+    background: var(--ink); color: var(--cream);
+    padding: 12px 20px; border-radius: 6px;
+    font-size: 13.5px; font-weight: 500;
+    box-shadow: var(--shadow-lg);
+    transform: translateY(80px); opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 9999;
+    display: flex; align-items: center; gap: 8px;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.success { border-left: 4px solid var(--success); }
+  #toast.error { border-left: 4px solid var(--danger); }
+
+  /* ── DIVIDER ── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+  /* ── EMPTY STATE ── */
+  .empty-state { text-align: center; padding: 36px 20px; color: var(--muted); }
+  .empty-state .icon { font-size: 2.5rem; margin-bottom: 10px; }
+  .empty-state p { font-size: 13.5px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .content { padding: 20px 16px; }
+    .form-grid, .form-grid-3 { grid-template-columns: 1fr; }
+    .summary-row { grid-template-columns: 1fr; }
+    #preview-content { padding: 24px 20px; }
+    .preview-logo-row { flex-direction: column; gap: 12px; }
+    .preview-meta { text-align: left; }
+    .preview-signatures { grid-template-columns: 1fr; }
+    header nav .btn-secondary { display: none; }
+    .steps-bar { flex-direction: column; }
+    .step-item { border-right: none; border-bottom: 1px solid var(--border); }
+    .step-item:last-child { border-bottom: none; }
+    .mobile-nav { display: flex; }
+  }
+  .mobile-nav {
+    display: none;
+    overflow-x: auto;
+    background: var(--ink);
+    padding: 0 16px;
+    gap: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mobile-nav-item {
+    flex-shrink: 0; padding: 12px 16px;
+    font-size: 12px; color: rgba(247,244,238,0.65);
+    cursor: pointer; border-bottom: 2px solid transparent;
+    white-space: nowrap; transition: all 0.15s;
+    font-weight: 500;
+  }
+  .mobile-nav-item.active { color: var(--cream); border-bottom-color: var(--accent); }
+
+  /* ── MISC ── */
+  .flex-row { display: flex; align-items: center; gap: 10px; }
+  .flex-between { display: flex; align-items: center; justify-content: space-between; }
+  .mt-2 { margin-top: 8px; }
+  .mt-3 { margin-top: 16px; }
+  .text-muted { color: var(--muted); font-size: 13px; }
+  .badge { display: inline-block; font-size: 10px; font-weight: 700; background: var(--accent); color: #fff; border-radius: 20px; padding: 1px 7px; }
+  
+  .required::after { content: ' *'; color: var(--danger); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <span>📋</span>
+    ProposalCraft
+  </div>
+  <nav>
+    <button class="btn btn-secondary btn-sm" onclick="resetAll()">↺ Reset</button>
+    <button class="btn btn-primary btn-sm" onclick="exportPDF()">⬇ Export PDF</button>
+  </nav>
+</header>
+
+<!-- MOBILE NAV -->
+<div class="mobile-nav" id="mobileNav">
+  <div class="mobile-nav-item active" onclick="navigate('info')">Client Info</div>
+  <div class="mobile-nav-item" onclick="navigate('assets')">Assets</div>
+  <div class="mobile-nav-item" onclick="navigate('liabilities')">Liabilities</div>
+  <div class="mobile-nav-item" onclick="navigate('fees')">Fees</div>
+  <div class="mobile-nav-item" onclick="navigate('preview')">Preview</div>
+</div>
+
+<!-- APP WRAPPER -->
+<div class="app-wrapper">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Proposal</div>
+      <a class="sidebar-item active" onclick="navigate('info')"><span class="icon">👤</span> Client Info</a>
+      <a class="sidebar-item" onclick="navigate('assets')"><span class="icon">📈</span> Assets</a>
+      <a class="sidebar-item" onclick="navigate('liabilities')"><span class="icon">📉</span> Liabilities</a>
+      <a class="sidebar-item" onclick="navigate('fees')"><span class="icon">💼</span> Fees & Services</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Output</div>
+      <a class="sidebar-item" onclick="navigate('preview')"><span class="icon">👁</span> Preview</a>
+    </div>
+  </aside>
+
+  <!-- CONTENT -->
+  <main class="content">
+
+    <!-- Progress -->
+    <div class="steps-bar" id="stepsBar">
+      <div class="step-item active" id="step-info" onclick="navigate('info')"><div class="step-num">1</div> Client Info</div>
+      <div class="step-item" id="step-assets" onclick="navigate('assets')"><div class="step-num">2</div> Assets</div>
+      <div class="step-item" id="step-liabilities" onclick="navigate('liabilities')"><div class="step-num">3</div> Liabilities</div>
+      <div class="step-item" id="step-fees" onclick="navigate('fees')"><div class="step-num">4</div> Fees</div>
+      <div class="step-item" id="step-preview" onclick="navigate('preview')"><div class="step-num">5</div> Preview</div>
+    </div>
+
+    <!-- ── PANEL: Client Info ── -->
+    <div class="panel active" id="panel-info">
+      <div class="panel-header">
+        <h2>Client Information</h2>
+        <p>Basic details about your firm and the client for this proposal.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🏢 Your Firm Details</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="required">Firm / Company Name</label>
+            <input type="text" id="firmName" placeholder="e.g. Pinnacle Advisory Group" />
+          </div>
+          <div class="form-group">
+            <label>Tagline / Specialty</label>
+            <input type="text" id="firmTagline" placeholder="e.g. Wealth Management & Financial Planning" />
+          </div>
+          <div class="form-group">
+            <label>Advisor Name</label>
+            <input type="text" id="advisorName" placeholder="e.g. Priya Mehta, CFP" />
+          </div>
+          <div class="form-group">
+            <label>Advisor Email</label>
+            <input type="email" id="advisorEmail" placeholder="priya@pinnacle.com" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">👤 Client Details</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="required">Client Full Name</label>
+            <input type="text" id="clientName" placeholder="e.g. Rajesh Sharma" />
+          </div>
+          <div class="form-group">
+            <label>Client Email</label>
+            <input type="email" id="clientEmail" placeholder="rajesh@example.com" />
+          </div>
+          <div class="form-group">
+            <label>Proposal Date</label>
+            <input type="date" id="proposalDate" />
+          </div>
+          <div class="form-group">
+            <label>Valid Until</label>
+            <input type="date" id="validUntil" />
+          </div>
+          <div class="form-group">
+            <label>Proposal Number</label>
+            <input type="text" id="proposalNo" placeholder="e.g. PROP-2026-001" />
+          </div>
+          <div class="form-group">
+            <label>Currency</label>
+            <select id="currency">
+              <option value="₹">₹ INR</option>
+              <option value="$">$ USD</option>
+              <option value="€">€ EUR</option>
+              <option value="£">£ GBP</option>
+              <option value="¥">¥ JPY</option>
+              <option value="A$">A$ AUD</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📝 Executive Summary</div>
+        <div class="form-group">
+          <label>Introduction / Cover Note</label>
+          <textarea id="introText" rows="4" placeholder="Write a brief introduction or cover message for the client. This will appear at the top of the proposal…"></textarea>
+        </div>
+        <div class="form-group mt-3">
+          <label>Remarks / Terms</label>
+          <textarea id="remarksText" rows="3" placeholder="Add any additional terms, conditions, or closing remarks…"></textarea>
+        </div>
+      </div>
+
+      <div class="flex-row" style="justify-content:flex-end">
+        <button class="btn btn-primary" onclick="navigate('assets')">Next: Assets →</button>
+      </div>
+    </div>
+
+    <!-- ── PANEL: Assets ── -->
+    <div class="panel" id="panel-assets">
+      <div class="panel-header">
+        <h2>Assets</h2>
+        <p>List all client assets — investments, property, savings, etc.</p>
+      </div>
+
+      <div class="summary-row">
+        <div class="summary-box positive">
+          <div class="label">Total Assets</div>
+          <div class="value" id="totalAssetsDisplay">0</div>
+        </div>
+        <div class="summary-box neutral">
+          <div class="label">No. of Assets</div>
+          <div class="value" id="assetCountDisplay">0</div>
+        </div>
+        <div class="summary-box">
+          <div class="label">Largest Asset</div>
+          <div class="value" id="largestAssetDisplay">—</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="flex-between" style="margin-bottom:14px">
+          <div class="card-title" style="margin-bottom:0">Asset List <span class="pill" id="assetPill">0 items</span></div>
+        </div>
+        <div id="assetsTableWrap">
+          <div class="empty-state" id="assetsEmpty">
+            <div class="icon">📊</div>
+            <p>No assets added yet. Use the form below to add your first asset.</p>
+          </div>
+          <table class="data-table" id="assetsTable" style="display:none">
+            <thead>
+              <tr>
+                <th>Asset Name</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th class="amount">Value</th>
+                <th class="actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="assetsTbody"></tbody>
+          </table>
+        </div>
+
+        <div class="add-row" id="addAssetForm">
+          <h4>+ Add Asset</h4>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Asset Name *</label>
+              <input type="text" id="assetName" placeholder="e.g. HDFC Mutual Fund" />
+            </div>
+            <div class="form-group">
+              <label>Category</label>
+              <select id="assetCategory">
+                <option value="Equity">Equity / Stocks</option>
+                <option value="Mutual Fund">Mutual Fund</option>
+                <option value="Fixed Deposit">Fixed Deposit</option>
+                <option value="Real Estate">Real Estate</option>
+                <option value="Gold">Gold</option>
+                <option value="Bonds">Bonds</option>
+                <option value="Cash / Savings">Cash / Savings</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Value *</label>
+              <input type="number" id="assetValue" placeholder="0.00" min="0" step="0.01" />
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <input type="text" id="assetDesc" placeholder="Optional notes" />
+            </div>
+          </div>
+          <div class="flex-row mt-2">
+            <button class="btn btn-primary" onclick="addAsset()">Add Asset</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearAssetForm()">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-row" style="justify-content:space-between">
+        <button class="btn btn-ghost" onclick="navigate('info')">← Back</button>
+        <button class="btn btn-primary" onclick="navigate('liabilities')">Next: Liabilities →</button>
+      </div>
+    </div>
+
+    <!-- ── PANEL: Liabilities ── -->
+    <div class="panel" id="panel-liabilities">
+      <div class="panel-header">
+        <h2>Liabilities</h2>
+        <p>List all outstanding debts, loans, and obligations.</p>
+      </div>
+
+      <div class="summary-row">
+        <div class="summary-box negative">
+          <div class="label">Total Liabilities</div>
+          <div class="value" id="totalLiabDisplay">0</div>
+        </div>
+        <div class="summary-box neutral">
+          <div class="label">No. of Liabilities</div>
+          <div class="value" id="liabCountDisplay">0</div>
+        </div>
+        <div class="summary-box">
+          <div class="label">Net Worth</div>
+          <div class="value" id="netWorthDisplay">0</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="flex-between" style="margin-bottom:14px">
+          <div class="card-title" style="margin-bottom:0">Liability List <span class="pill" id="liabPill">0 items</span></div>
+        </div>
+        <div id="liabsTableWrap">
+          <div class="empty-state" id="liabsEmpty">
+            <div class="icon">📉</div>
+            <p>No liabilities added yet. Use the form below to add your first entry.</p>
+          </div>
+          <table class="data-table" id="liabsTable" style="display:none">
+            <thead>
+              <tr>
+                <th>Liability</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th class="amount">Amount</th>
+                <th class="actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="liabsTbody"></tbody>
+          </table>
+        </div>
+
+        <div class="add-row">
+          <h4>+ Add Liability</h4>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Liability Name *</label>
+              <input type="text" id="liabName" placeholder="e.g. Home Loan – SBI" />
+            </div>
+            <div class="form-group">
+              <label>Type</label>
+              <select id="liabType">
+                <option value="Home Loan">Home Loan</option>
+                <option value="Car Loan">Car Loan</option>
+                <option value="Personal Loan">Personal Loan</option>
+                <option value="Education Loan">Education Loan</option>
+                <option value="Credit Card">Credit Card</option>
+                <option value="Business Loan">Business Loan</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Outstanding Amount *</label>
+              <input type="number" id="liabValue" placeholder="0.00" min="0" step="0.01" />
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <input type="text" id="liabDesc" placeholder="Optional notes" />
+            </div>
+          </div>
+          <div class="flex-row mt-2">
+            <button class="btn btn-primary" onclick="addLiability()">Add Liability</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearLiabForm()">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-row" style="justify-content:space-between">
+        <button class="btn btn-ghost" onclick="navigate('assets')">← Back</button>
+        <button class="btn btn-primary" onclick="navigate('fees')">Next: Fees →</button>
+      </div>
+    </div>
+
+    <!-- ── PANEL: Fees ── -->
+    <div class="panel" id="panel-fees">
+      <div class="panel-header">
+        <h2>Fees & Services</h2>
+        <p>Define the services offered and associated fees for this proposal.</p>
+      </div>
+
+      <div class="card">
+        <div class="flex-between" style="margin-bottom:14px">
+          <div class="card-title" style="margin-bottom:0">Service Fees <span class="pill" id="feesPill">0 items</span></div>
+        </div>
+        <div id="feesTableWrap">
+          <div class="empty-state" id="feesEmpty">
+            <div class="icon">💼</div>
+            <p>No fees added yet. Add your service offerings below.</p>
+          </div>
+          <table class="data-table" id="feesTable" style="display:none">
+            <thead>
+              <tr>
+                <th>Service</th>
+                <th>Frequency</th>
+                <th>Description</th>
+                <th class="amount">Fee</th>
+                <th class="actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="feesTbody"></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3" style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:#8a8070">Total Fees</td>
+                <td class="amount" style="font-weight:700" id="totalFeesFooter">0</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div class="add-row">
+          <h4>+ Add Service / Fee</h4>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Service Name *</label>
+              <input type="text" id="feeName" placeholder="e.g. Financial Planning" />
+            </div>
+            <div class="form-group">
+              <label>Frequency</label>
+              <select id="feeFreq">
+                <option value="One-time">One-time</option>
+                <option value="Monthly">Monthly</option>
+                <option value="Quarterly">Quarterly</option>
+                <option value="Annual">Annual</option>
+                <option value="% of AUM">% of AUM</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Fee Amount *</label>
+              <input type="number" id="feeValue" placeholder="0.00" min="0" step="0.01" />
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <input type="text" id="feeDesc" placeholder="Optional details" />
+            </div>
+          </div>
+          <div class="flex-row mt-2">
+            <button class="btn btn-primary" onclick="addFee()">Add Fee</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearFeeForm()">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="background:var(--warm)">
+        <div class="card-title">📊 Financial Summary</div>
+        <table class="data-table">
+          <tbody>
+            <tr>
+              <td>Total Assets</td>
+              <td class="amount" id="sumAssets">—</td>
+            </tr>
+            <tr>
+              <td>Total Liabilities</td>
+              <td class="amount" id="sumLiabs" style="color:var(--danger)">—</td>
+            </tr>
+            <tr>
+              <td style="font-weight:700">Net Worth</td>
+              <td class="amount" id="sumNet" style="font-weight:700">—</td>
+            </tr>
+            <tr>
+              <td>Total Fees Proposed</td>
+              <td class="amount" id="sumFees" style="color:var(--accent2);font-weight:700">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex-row" style="justify-content:space-between">
+        <button class="btn btn-ghost" onclick="navigate('liabilities')">← Back</button>
+        <button class="btn btn-success" onclick="navigate('preview')">Preview Proposal →</button>
+      </div>
+    </div>
+
+    <!-- ── PANEL: Preview ── -->
+    <div class="panel" id="panel-preview">
+      <div class="panel-header">
+        <div class="flex-between">
+          <div>
+            <h2>Proposal Preview</h2>
+            <p>Review the complete proposal before exporting.</p>
+          </div>
+          <div class="flex-row">
+            <button class="btn btn-ghost btn-sm" onclick="navigate('info')">✏ Edit</button>
+            <button class="btn btn-primary" onclick="exportPDF()">⬇ Export PDF</button>
+          </div>
+        </div>
+      </div>
+      <div id="preview-content"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ── STATE ──
+const state = {
+  assets: [],
+  liabilities: [],
+  fees: [],
+};
+let assetIdCounter = 1;
+let liabIdCounter = 1;
+let feeIdCounter = 1;
+
+// ── NAVIGATION ──
+function navigate(section) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  document.querySelectorAll('.step-item').forEach(i => i.classList.remove('active'));
+  document.querySelectorAll('.mobile-nav-item').forEach(i => i.classList.remove('active'));
+
+  document.getElementById('panel-' + section).classList.add('active');
+  document.getElementById('step-' + section).classList.add('active');
+
+  const sidebarItems = document.querySelectorAll('.sidebar-item');
+  const sectionMap = { info: 0, assets: 1, liabilities: 2, fees: 3, preview: 4 };
+  if (sidebarItems[sectionMap[section]]) sidebarItems[sectionMap[section]].classList.add('active');
+
+  const mobileItems = document.querySelectorAll('.mobile-nav-item');
+  if (mobileItems[sectionMap[section]]) mobileItems[sectionMap[section]].classList.add('active');
+
+  if (section === 'preview') buildPreview();
+  updateSummary();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── CURRENCY ──
+function cur() { return document.getElementById('currency').value || '₹'; }
+function fmt(n) { return cur() + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+// ── ASSETS ──
+function addAsset() {
+  const name = document.getElementById('assetName').value.trim();
+  const val = parseFloat(document.getElementById('assetValue').value);
+  if (!name) { toast('Please enter an asset name.', 'error'); return; }
+  if (isNaN(val) || val < 0) { toast('Please enter a valid asset value.', 'error'); return; }
+  state.assets.push({
+    id: assetIdCounter++,
+    name,
+    category: document.getElementById('assetCategory').value,
+    desc: document.getElementById('assetDesc').value.trim(),
+    value: val
+  });
+  clearAssetForm();
+  renderAssets();
+  updateSummary();
+  toast('Asset added successfully!', 'success');
+}
+
+function deleteAsset(id) {
+  state.assets = state.assets.filter(a => a.id !== id);
+  renderAssets();
+  updateSummary();
+  toast('Asset removed.', '');
+}
+
+function clearAssetForm() {
+  ['assetName','assetValue','assetDesc'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('assetCategory').selectedIndex = 0;
+}
+
+function renderAssets() {
+  const tbody = document.getElementById('assetsTbody');
+  const table = document.getElementById('assetsTable');
+  const empty = document.getElementById('assetsEmpty');
+  tbody.innerHTML = '';
+  if (state.assets.length === 0) {
+    table.style.display = 'none'; empty.style.display = 'block';
+  } else {
+    table.style.display = 'table'; empty.style.display = 'none';
+    state.assets.forEach(a => {
+      tbody.innerHTML += `<tr>
+        <td><strong>${esc(a.name)}</strong></td>
+        <td><span class="tag tag-asset">${esc(a.category)}</span></td>
+        <td class="text-muted">${esc(a.desc || '—')}</td>
+        <td class="amount">${fmt(a.value)}</td>
+        <td class="actions"><button class="btn btn-danger btn-sm" onclick="deleteAsset(${a.id})">✕</button></td>
+      </tr>`;
+    });
+  }
+  const total = state.assets.reduce((s, a) => s + a.value, 0);
+  document.getElementById('totalAssetsDisplay').textContent = fmt(total);
+  document.getElementById('assetCountDisplay').textContent = state.assets.length;
+  const max = state.assets.length ? Math.max(...state.assets.map(a => a.value)) : 0;
+  document.getElementById('largestAssetDisplay').textContent = max ? fmt(max) : '—';
+  document.getElementById('assetPill').textContent = state.assets.length + ' item' + (state.assets.length !== 1 ? 's' : '');
+}
+
+// ── LIABILITIES ──
+function addLiability() {
+  const name = document.getElementById('liabName').value.trim();
+  const val = parseFloat(document.getElementById('liabValue').value);
+  if (!name) { toast('Please enter a liability name.', 'error'); return; }
+  if (isNaN(val) || val < 0) { toast('Please enter a valid amount.', 'error'); return; }
+  state.liabilities.push({
+    id: liabIdCounter++,
+    name,
+    type: document.getElementById('liabType').value,
+    desc: document.getElementById('liabDesc').value.trim(),
+    value: val
+  });
+  clearLiabForm();
+  renderLiabilities();
+  updateSummary();
+  toast('Liability added!', 'success');
+}
+
+function deleteLiability(id) {
+  state.liabilities = state.liabilities.filter(l => l.id !== id);
+  renderLiabilities();
+  updateSummary();
+  toast('Liability removed.', '');
+}
+
+function clearLiabForm() {
+  ['liabName','liabValue','liabDesc'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('liabType').selectedIndex = 0;
+}
+
+function renderLiabilities() {
+  const tbody = document.getElementById('liabsTbody');
+  const table = document.getElementById('liabsTable');
+  const empty = document.getElementById('liabsEmpty');
+  tbody.innerHTML = '';
+  if (state.liabilities.length === 0) {
+    table.style.display = 'none'; empty.style.display = 'block';
+  } else {
+    table.style.display = 'table'; empty.style.display = 'none';
+    state.liabilities.forEach(l => {
+      tbody.innerHTML += `<tr>
+        <td><strong>${esc(l.name)}</strong></td>
+        <td><span class="tag tag-liability">${esc(l.type)}</span></td>
+        <td class="text-muted">${esc(l.desc || '—')}</td>
+        <td class="amount" style="color:var(--danger)">${fmt(l.value)}</td>
+        <td class="actions"><button class="btn btn-danger btn-sm" onclick="deleteLiability(${l.id})">✕</button></td>
+      </tr>`;
+    });
+  }
+  const total = state.liabilities.reduce((s, l) => s + l.value, 0);
+  const assets = state.assets.reduce((s, a) => s + a.value, 0);
+  const net = assets - total;
+  document.getElementById('totalLiabDisplay').textContent = fmt(total);
+  document.getElementById('liabCountDisplay').textContent = state.liabilities.length;
+  const nw = document.getElementById('netWorthDisplay');
+  nw.textContent = fmt(net);
+  nw.style.color = net >= 0 ? 'var(--success)' : 'var(--danger)';
+  document.getElementById('liabPill').textContent = state.liabilities.length + ' item' + (state.liabilities.length !== 1 ? 's' : '');
+}
+
+// ── FEES ──
+function addFee() {
+  const name = document.getElementById('feeName').value.trim();
+  const val = parseFloat(document.getElementById('feeValue').value);
+  if (!name) { toast('Please enter a service name.', 'error'); return; }
+  if (isNaN(val) || val < 0) { toast('Please enter a valid fee amount.', 'error'); return; }
+  state.fees.push({
+    id: feeIdCounter++,
+    name,
+    freq: document.getElementById('feeFreq').value,
+    desc: document.getElementById('feeDesc').value.trim(),
+    value: val
+  });
+  clearFeeForm();
+  renderFees();
+  updateSummary();
+  toast('Fee added!', 'success');
+}
+
+function deleteFee(id) {
+  state.fees = state.fees.filter(f => f.id !== id);
+  renderFees();
+  updateSummary();
+  toast('Fee removed.', '');
+}
+
+function clearFeeForm() {
+  ['feeName','feeValue','feeDesc'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('feeFreq').selectedIndex = 0;
+}
+
+function renderFees() {
+  const tbody = document.getElementById('feesTbody');
+  const table = document.getElementById('feesTable');
+  const empty = document.getElementById('feesEmpty');
+  tbody.innerHTML = '';
+  const total = state.fees.reduce((s, f) => s + f.value, 0);
+  if (state.fees.length === 0) {
+    table.style.display = 'none'; empty.style.display = 'block';
+  } else {
+    table.style.display = 'table'; empty.style.display = 'none';
+    state.fees.forEach(f => {
+      tbody.innerHTML += `<tr>
+        <td><strong>${esc(f.name)}</strong></td>
+        <td><span class="tag tag-fee">${esc(f.freq)}</span></td>
+        <td class="text-muted">${esc(f.desc || '—')}</td>
+        <td class="amount" style="color:var(--accent2)">${fmt(f.value)}</td>
+        <td class="actions"><button class="btn btn-danger btn-sm" onclick="deleteFee(${f.id})">✕</button></td>
+      </tr>`;
+    });
+  }
+  document.getElementById('totalFeesFooter').textContent = fmt(total);
+  document.getElementById('feesPill').textContent = state.fees.length + ' item' + (state.fees.length !== 1 ? 's' : '');
+}
+
+function updateSummary() {
+  const totalA = state.assets.reduce((s, a) => s + a.value, 0);
+  const totalL = state.liabilities.reduce((s, l) => s + l.value, 0);
+  const totalF = state.fees.reduce((s, f) => s + f.value, 0);
+  const net = totalA - totalL;
+  const s = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  s('sumAssets', fmt(totalA));
+  s('sumLiabs', fmt(totalL));
+  s('sumNet', fmt(net));
+  s('sumFees', fmt(totalF));
+}
+
+// ── PREVIEW ──
+function buildPreview() {
+  const g = id => (document.getElementById(id) || {}).value || '';
+  const firmName = g('firmName') || 'Your Firm';
+  const firmTag = g('firmTagline');
+  const clientName = g('clientName') || 'Valued Client';
+  const clientEmail = g('clientEmail');
+  const advisorName = g('advisorName');
+  const advisorEmail = g('advisorEmail');
+  const propDate = g('proposalDate') ? new Date(g('proposalDate')).toLocaleDateString('en-IN', {day:'2-digit',month:'long',year:'numeric'}) : new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'});
+  const validUntil = g('validUntil') ? new Date(g('validUntil')).toLocaleDateString('en-IN', {day:'2-digit',month:'long',year:'numeric'}) : '—';
+  const propNo = g('proposalNo') || ('PROP-' + Date.now().toString().slice(-6));
+  const intro = g('introText');
+  const remarks = g('remarksText');
+
+  const totalA = state.assets.reduce((s, a) => s + a.value, 0);
+  const totalL = state.liabilities.reduce((s, l) => s + l.value, 0);
+  const totalF = state.fees.reduce((s, f) => s + f.value, 0);
+  const net = totalA - totalL;
+
+  let assetsRows = state.assets.map(a =>
+    `<tr><td>${esc(a.name)}</td><td>${esc(a.category)}</td><td class="r">${fmt(a.value)}</td></tr>`
+  ).join('');
+  if (!assetsRows) assetsRows = `<tr><td colspan="3" style="color:#aaa;font-style:italic">No assets recorded.</td></tr>`;
+
+  let liabRows = state.liabilities.map(l =>
+    `<tr><td>${esc(l.name)}</td><td>${esc(l.type)}</td><td class="r">${fmt(l.value)}</td></tr>`
+  ).join('');
+  if (!liabRows) liabRows = `<tr><td colspan="3" style="color:#aaa;font-style:italic">No liabilities recorded.</td></tr>`;
+
+  let feeRows = state.fees.map(f =>
+    `<tr><td>${esc(f.name)}</td><td>${esc(f.freq)}</td><td>${esc(f.desc||'')}</td><td class="r">${fmt(f.value)}</td></tr>`
+  ).join('');
+  if (!feeRows) feeRows = `<tr><td colspan="4" style="color:#aaa;font-style:italic">No fees defined.</td></tr>`;
+
+  document.getElementById('preview-content').innerHTML = `
+    <div class="preview-logo-row">
+      <div>
+        <div class="preview-company-name">${esc(firmName)}</div>
+        ${firmTag ? `<div class="preview-tagline">${esc(firmTag)}</div>` : ''}
+      </div>
+      <div class="preview-meta">
+        <strong>Financial Proposal</strong>
+        No: ${esc(propNo)}<br>
+        Date: ${propDate}<br>
+        Valid Until: ${validUntil}<br>
+        ${advisorName ? `Advisor: ${esc(advisorName)}<br>` : ''}
+        ${advisorEmail ? `<a href="mailto:${esc(advisorEmail)}" style="color:#c4783c">${esc(advisorEmail)}</a>` : ''}
+      </div>
+    </div>
+
+    <div class="preview-to">
+      <h3>Prepared For</h3>
+      <div class="client-name">${esc(clientName)}</div>
+      ${clientEmail ? `<div style="font-size:13px;color:#8a8070">${esc(clientEmail)}</div>` : ''}
+    </div>
+
+    ${intro ? `<div class="preview-intro">${esc(intro).replace(/\n/g,'<br>')}</div>` : ''}
+
+    <div class="preview-section-title">Assets</div>
+    <table class="preview-table">
+      <thead><tr><th>Asset</th><th>Category</th><th class="r">Value</th></tr></thead>
+      <tbody>${assetsRows}</tbody>
+      <tfoot><tr><td colspan="2"><strong>Total Assets</strong></td><td class="r"><strong>${fmt(totalA)}</strong></td></tr></tfoot>
+    </table>
+
+    <div class="preview-section-title">Liabilities</div>
+    <table class="preview-table">
+      <thead><tr><th>Liability</th><th>Type</th><th class="r">Amount</th></tr></thead>
+      <tbody>${liabRows}</tbody>
+      <tfoot><tr><td colspan="2"><strong>Total Liabilities</strong></td><td class="r"><strong>${fmt(totalL)}</strong></td></tr></tfoot>
+    </table>
+
+    <div class="preview-net">
+      <div class="preview-net-box">
+        <div class="net-label">Net Worth</div>
+        <div class="net-val" style="color:${net >= 0 ? '#7ed6a5' : '#f08080'}">${fmt(net)}</div>
+      </div>
+    </div>
+
+    <div class="preview-section-title">Proposed Services & Fees</div>
+    <table class="preview-table">
+      <thead><tr><th>Service</th><th>Frequency</th><th>Details</th><th class="r">Fee</th></tr></thead>
+      <tbody>${feeRows}</tbody>
+      ${state.fees.length ? `<tfoot><tr><td colspan="3"><strong>Total Fees</strong></td><td class="r"><strong>${fmt(totalF)}</strong></td></tr></tfoot>` : ''}
+    </table>
+
+    ${state.fees.length ? `
+    <div class="preview-fee-box">
+      <div>
+        <div class="fee-label">Total Proposed Fee</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:3px">All services combined</div>
+      </div>
+      <div class="fee-val">${fmt(totalF)}</div>
+    </div>` : ''}
+
+    ${remarks ? `
+    <div class="preview-section-title">Remarks & Terms</div>
+    <div class="preview-remarks">${esc(remarks).replace(/\n/g,'<br>')}</div>
+    ` : ''}
+
+    <div class="preview-signatures">
+      <div>
+        <div class="preview-sig-line"></div>
+        <div class="preview-sig-label">Authorized Signatory — ${esc(firmName)}</div>
+        ${advisorName ? `<div style="font-size:12px;color:#8a8070;margin-top:4px">${esc(advisorName)}</div>` : ''}
+      </div>
+      <div>
+        <div class="preview-sig-line"></div>
+        <div class="preview-sig-label">Client Acceptance — ${esc(clientName)}</div>
+        ${clientEmail ? `<div style="font-size:12px;color:#8a8070;margin-top:4px">${esc(clientEmail)}</div>` : ''}
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid #e8e1d4;font-size:11px;color:#aaa;letter-spacing:0.06em;text-transform:uppercase">
+      Generated with ProposalCraft · Confidential Document · ${new Date().getFullYear()}
+    </div>
+  `;
+}
+
+// ── PDF EXPORT ──
+async function exportPDF() {
+  const el = document.getElementById('preview-content');
+  if (!el || !el.innerHTML.trim()) {
+    buildPreview();
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const g = id => (document.getElementById(id) || {}).value || '';
+  const firmName = g('firmName') || 'Proposal';
+  const clientName = g('clientName') || 'Client';
+  const propDate = g('proposalDate') || new Date().toISOString().split('T')[0];
+  const propNo = g('proposalNo') || ('PROP-' + Date.now().toString().slice(-6));
+  const advisorName = g('advisorName');
+  const advisorEmail = g('advisorEmail');
+  const intro = g('introText');
+  const remarks = g('remarksText');
+  const firmTag = g('firmTagline');
+  const clientEmail = g('clientEmail');
+  const validUntil = g('validUntil');
+
+  const totalA = state.assets.reduce((s, a) => s + a.value, 0);
+  const totalL = state.liabilities.reduce((s, l) => s + l.value, 0);
+  const totalF = state.fees.reduce((s, f) => s + f.value, 0);
+  const net = totalA - totalL;
+
+  const margin = 18;
+  const pageW = 210;
+  const contentW = pageW - margin * 2;
+  let y = 0;
+
+  function checkPage(needed = 20) {
+    if (y + needed > 270) { doc.addPage(); y = margin; }
+  }
+
+  // Header bar
+  doc.setFillColor(15, 14, 12);
+  doc.rect(0, 0, 210, 28, 'F');
+  doc.setTextColor(247, 244, 238);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.text(firmName, margin, 13);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  if (firmTag) doc.text(firmTag, margin, 20);
+  doc.setFontSize(9);
+  doc.text('Financial Proposal · ' + propNo, pageW - margin, 11, { align: 'right' });
+  doc.text('Date: ' + propDate, pageW - margin, 17, { align: 'right' });
+  if (validUntil) doc.text('Valid Until: ' + validUntil, pageW - margin, 23, { align: 'right' });
+
+  y = 36;
+
+  // To
+  doc.setTextColor(138, 128, 112);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('PREPARED FOR', margin, y);
+  y += 5;
+  doc.setTextColor(15, 14, 12);
+  doc.setFontSize(14);
+  doc.text(clientName, margin, y);
+  y += 5;
+  if (clientEmail) {
+    doc.setFontSize(9); doc.setTextColor(138,128,112); doc.setFont('helvetica','normal');
+    doc.text(clientEmail, margin, y); y += 5;
+  }
+  if (advisorName) {
+    doc.setFontSize(9); doc.setTextColor(138,128,112);
+    doc.text('Advisor: ' + advisorName + (advisorEmail ? '  ·  ' + advisorEmail : ''), margin, y);
+    y += 5;
+  }
+  y += 4;
+
+  // Intro
+  if (intro) {
+    doc.setFillColor(247, 244, 238);
+    const lines = doc.splitTextToSize(intro, contentW - 8);
+    const h = lines.length * 5 + 8;
+    checkPage(h + 6);
+    doc.rect(margin, y, contentW, h, 'F');
+    doc.setFillColor(196, 120, 60);
+    doc.rect(margin, y, 2, h, 'F');
+    doc.setTextColor(74, 69, 64);
+    doc.setFontSize(9.5); doc.setFont('helvetica','normal');
+    doc.text(lines, margin + 6, y + 6);
+    y += h + 10;
+  }
+
+  // Section helper
+  function sectionTitle(title) {
+    checkPage(14);
+    doc.setTextColor(15, 14, 12);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text(title, margin, y);
+    y += 1;
+    doc.setDrawColor(200, 193, 182);
+    doc.line(margin, y + 2, margin + contentW, y + 2);
+    y += 8;
+  }
+
+  function tableHeader(cols, widths) {
+    doc.setFillColor(15, 14, 12);
+    doc.rect(margin, y, contentW, 7, 'F');
+    doc.setTextColor(247, 244, 238);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    let x = margin + 3;
+    cols.forEach((c, i) => {
+      if (i === cols.length - 1) doc.text(c, margin + contentW - 3, y + 5, { align: 'right' });
+      else doc.text(c, x, y + 5);
+      x += widths[i];
+    });
+    y += 7;
+  }
+
+  function tableRow(cells, widths, isLast, colored) {
+    checkPage(8);
+    if (!isLast) {
+      doc.setDrawColor(232, 225, 212);
+      doc.line(margin, y + 6, margin + contentW, y + 6);
+    }
+    doc.setTextColor(colored || 15, colored ? 0 : 14, colored ? 0 : 12);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    let x = margin + 3;
+    cells.forEach((c, i) => {
+      if (i === cells.length - 1) doc.text(String(c), margin + contentW - 3, y + 5, { align: 'right' });
+      else { const lines = doc.splitTextToSize(String(c), widths[i] - 4); doc.text(lines, x, y + 5); }
+      x += widths[i];
+    });
+    y += 7;
+  }
+
+  function tableFooter(label, val) {
+    checkPage(9);
+    doc.setFillColor(247, 244, 238);
+    doc.rect(margin, y, contentW, 8, 'F');
+    doc.setDrawColor(15, 14, 12);
+    doc.line(margin, y, margin + contentW, y);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(15, 14, 12);
+    doc.text(label, margin + 3, y + 6);
+    doc.text(val, margin + contentW - 3, y + 6, { align: 'right' });
+    y += 12;
+  }
+
+  // Assets
+  sectionTitle('Assets');
+  tableHeader(['Asset Name', 'Category', 'Value'], [80, 50, 44]);
+  state.assets.forEach((a, i) => tableRow([a.name, a.category, fmt(a.value)], [80, 50, 44], i === state.assets.length - 1));
+  if (!state.assets.length) { doc.setFontSize(9); doc.setTextColor(170,170,170); doc.text('No assets recorded.', margin+3, y+5); y+=10; }
+  tableFooter('Total Assets', fmt(totalA));
+
+  // Liabilities
+  sectionTitle('Liabilities');
+  tableHeader(['Liability', 'Type', 'Amount'], [80, 50, 44]);
+  state.liabilities.forEach((l, i) => tableRow([l.name, l.type, fmt(l.value)], [80, 50, 44], i === state.liabilities.length - 1));
+  if (!state.liabilities.length) { doc.setFontSize(9); doc.setTextColor(170,170,170); doc.text('No liabilities recorded.', margin+3, y+5); y+=10; }
+  tableFooter('Total Liabilities', fmt(totalL));
+
+  // Net Worth box
+  checkPage(18);
+  doc.setFillColor(15, 14, 12);
+  doc.rect(pageW - margin - 70, y, 70, 16, 'F');
+  doc.setTextColor(138, 128, 112);
+  doc.setFontSize(7.5); doc.setFont('helvetica','bold');
+  doc.text('NET WORTH', pageW - margin - 5, y + 6, { align: 'right' });
+  doc.setFontSize(13); doc.setFont('helvetica','bold');
+  doc.setTextColor(net >= 0 ? 126 : 240, net >= 0 ? 214 : 128, net >= 0 ? 165 : 128);
+  doc.text(fmt(net), pageW - margin - 5, y + 13, { align: 'right' });
+  y += 22;
+
+  // Fees
+  sectionTitle('Proposed Services & Fees');
+  tableHeader(['Service', 'Frequency', 'Description', 'Fee'], [55, 35, 50, 34]);
+  state.fees.forEach((f, i) => tableRow([f.name, f.freq, f.desc || '', fmt(f.value)], [55, 35, 50, 34], i === state.fees.length - 1));
+  if (!state.fees.length) { doc.setFontSize(9); doc.setTextColor(170,170,170); doc.text('No fees defined.', margin+3, y+5); y+=10; }
+  if (state.fees.length) tableFooter('Total Proposed Fees', fmt(totalF));
+
+  // Remarks
+  if (remarks) {
+    sectionTitle('Remarks & Terms');
+    doc.setFillColor(247, 244, 238);
+    const lines = doc.splitTextToSize(remarks, contentW - 8);
+    const h = lines.length * 5 + 8;
+    checkPage(h + 4);
+    doc.rect(margin, y, contentW, h, 'F');
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(74,69,64);
+    doc.text(lines, margin + 4, y + 6);
+    y += h + 10;
+  }
+
+  // Signatures
+  checkPage(50);
+  y += 10;
+  doc.setDrawColor(15, 14, 12);
+  doc.line(margin, y + 2, margin + 2, y + 2);
+  doc.line(margin, y + 2, margin + 80, y + 2);
+  doc.line(margin + contentW - 80, y + 2, margin + contentW, y + 2);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(138,128,112);
+  doc.text('Authorized Signatory — ' + firmName, margin, y + 8);
+  if (advisorName) doc.text(advisorName, margin, y + 13);
+  doc.text('Client Acceptance — ' + clientName, margin + contentW - 80, y + 8);
+  y += 22;
+
+  // Footer strip
+  doc.setFillColor(15, 14, 12);
+  doc.rect(0, 285, 210, 12, 'F');
+  doc.setTextColor(138, 128, 112);
+  doc.setFontSize(7.5); doc.setFont('helvetica','normal');
+  doc.text('Generated with ProposalCraft · Confidential Document · ' + new Date().getFullYear(), 105, 292, { align: 'center' });
+
+  const filename = `${clientName.replace(/\s+/g,'_')}_Proposal_${propNo}.pdf`;
+  doc.save(filename);
+  toast('PDF exported: ' + filename, 'success');
+}
+
+// ── RESET ──
+function resetAll() {
+  if (!confirm('Reset all data? This cannot be undone.')) return;
+  state.assets = []; state.liabilities = []; state.fees = [];
+  assetIdCounter = liabIdCounter = feeIdCounter = 1;
+  ['firmName','firmTagline','advisorName','advisorEmail','clientName','clientEmail',
+   'proposalDate','validUntil','proposalNo','introText','remarksText'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('currency').value = '₹';
+  renderAssets(); renderLiabilities(); renderFees();
+  navigate('info');
+  toast('All data cleared.', '');
+}
+
+// ── HELPERS ──
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+let toastTimer;
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = (type === 'success' ? '✓ ' : type === 'error' ? '✕ ' : 'ℹ ') + msg;
+  el.className = 'show ' + (type || '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = '', 2800);
+}
+
+// ── INIT ──
+document.getElementById('proposalDate').value = new Date().toISOString().split('T')[0];
+const nextMonth = new Date(); nextMonth.setMonth(nextMonth.getMonth() + 1);
+document.getElementById('validUntil').value = nextMonth.toISOString().split('T')[0];
+document.getElementById('proposalNo').value = 'PROP-' + new Date().getFullYear() + '-' + String(Math.floor(Math.random()*900)+100);
+</script>
+</body>
+</html>
